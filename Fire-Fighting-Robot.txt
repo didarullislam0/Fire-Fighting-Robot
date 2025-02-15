@@ -1,0 +1,192 @@
+#define enA 10//Enable1 L298 Pin enA
+#define in1 9 //Motor1 L298 Pin in1
+#define in2 8 //Motor1 L298 Pin in2
+#define in3 7 //Motor2 L298 Pin in3
+
+#define in4 6 //Motor2 L298 Pin in4
+#define enB 5 //Enable2 L298 Pin enB
+
+#define ir_R A0
+#define ir_F A1
+#define ir_L A2
+#define servo 2
+#define pump 13
+int Speed = 160; // Write The Duty Cycle 0 to 255 Enable for Motor Speed
+int s1, s2, s3, sig1, sig2, sig3;
+
+
+
+
+void setup() {
+  Serial.begin(9600); // start serial communication at 9600bps
+  pinMode(ir_R, INPUT);// declare fire sensor pin as input
+  pinMode(ir_F, INPUT);// declare fire sensor pin as input
+  pinMode(ir_L, INPUT);// declare fire sensor pin as input
+  pinMode(enA, OUTPUT); // declare as output for L298 Pin enA
+  pinMode(in1, OUTPUT); // declare as output for L298 Pin in1
+  pinMode(in2, OUTPUT); // declare as output for L298 Pin in2
+  pinMode(in3, OUTPUT); // declare as output for L298 Pin in3
+  pinMode(in4, OUTPUT); // declare as output for L298 Pin in4
+  pinMode(enB, OUTPUT); // declare as output for L298 Pin enB
+  pinMode(servo, OUTPUT);
+  pinMode(pump, OUTPUT);
+
+
+  analogWrite(enA, Speed); // Write The Duty Cycle 0 to 255 Enable Pin A for Motor1 Speed
+  analogWrite(enB, Speed);
+}
+
+void loop() {
+  irsenor();
+  fireTrack();
+
+}
+
+
+void irsenor()
+{
+  s1 = analogRead(ir_R);
+  s2 = analogRead(ir_F);
+  s3 = analogRead(ir_L);
+
+  Serial.print(s1);
+  Serial.print("\t");
+  Serial.print(s2);
+  Serial.print("\t");
+  Serial.println(s3);
+  if (s1 < 200)
+  {
+    sig1 = 1;
+  }
+  else
+  {
+    sig1 = 0;
+  }
+  if (s2 < 200)
+  {
+    sig2 = 1;
+  }
+  else
+  {
+    sig2 = 0;
+  }
+  if (s3 < 200)
+  {
+    sig3 = 1;
+  }
+  else
+  {
+    sig3 = 0;
+  }
+  Serial.print(sig1);
+  Serial.print("\t");
+  Serial.print(sig2);
+  Serial.print("\t");
+  Serial.println(sig3);
+}
+
+void forword() { //forword
+  digitalWrite(in1, HIGH); //Right Motor forword Pin
+  digitalWrite(in2, LOW); //Right Motor backword Pin
+  digitalWrite(in3, HIGH); //Left Motor backword Pin
+  digitalWrite(in4, LOW); //Left Motor forword Pin
+}
+
+void backword() { //backword
+  digitalWrite(in1, LOW); //Right Motor forword Pin
+  digitalWrite(in2, HIGH); //Right Motor backword Pin
+  digitalWrite(in3, LOW); //Left Motor backword Pin
+  digitalWrite(in4, HIGH); //Left Motor forword Pin
+}
+
+void turnLeft() { //turnLeft
+  digitalWrite(in1, LOW); //Right Motor forword Pin
+  digitalWrite(in2, HIGH); //Right Motor backword Pin
+  digitalWrite(in3, HIGH); //Left Motor backword Pin
+  digitalWrite(in4, LOW); //Left Motor forword Pin
+}
+
+void turnRight() { //turnRight
+  digitalWrite(in1, HIGH); //Right Motor forword Pin
+  digitalWrite(in2, LOW); //Right Motor backword Pin
+  digitalWrite(in3, LOW); //Left Motor backword Pin
+  digitalWrite(in4, HIGH); //Left Motor forword Pin
+}
+
+void Stop() { //stop
+  digitalWrite(in1, LOW); //Right Motor forword Pin
+  digitalWrite(in2, LOW); //Right Motor backword Pin
+  digitalWrite(in3, LOW); //Left Motor backword Pin
+  digitalWrite(in4, LOW); //Left Motor forword Pin
+}
+
+
+void fireTrack()
+{
+  if ((s1 < 250) && (s2 < 350) && (s3 < 250)) {
+    Stop();
+  }
+  else if ((s1 < 100) && (s2 > 350) && (s3 > 250)) {
+    backword();
+    delay(100);
+    while (s2 > 400)
+    {
+      turnRight();
+      delay(20);
+      irsenor();
+    }
+
+    //turnRight();
+    // delay(400);
+  }
+  else if ((s1 > 250) && (s2 < 100) && (s3 > 350)) {
+    forword();
+
+  }
+  else if ((s1 > 250) && (s2 > 350) && (s3 < 100)) {
+    backword();
+    delay(100);
+    while (s2 > 400)
+    {
+      turnLeft();
+      delay(20);
+      irsenor();
+    }
+    //turnLeft();
+    //delay(400);
+  }
+  else if ((sig1 + sig2 + sig3) > 1)
+  {
+    Stop();
+    servooperate();
+  }
+  else {
+    Stop();
+
+  }
+  delay(10);
+}
+
+void servooperate()
+{
+  digitalWrite(pump,LOW);
+  for (int angle = 90; angle <= 140; angle += 3) {
+    servoPulse(servo, angle);
+  }
+  for (int angle = 140; angle >= 40; angle -= 3) {
+    servoPulse(servo, angle);
+  }
+  for (int angle = 40; angle <= 90; angle += 3) {
+    servoPulse(servo, angle);
+  }
+  digitalWrite(pump,HIGH);
+}
+
+void servoPulse (int pin, int angle) {
+  int pwm = (angle * 11) + 500; // Convert angle to microseconds
+  digitalWrite(pin, HIGH);
+  delayMicroseconds(pwm);
+  digitalWrite(pin, LOW);
+
+  delay(50); // Refresh cycle of servo
+}
